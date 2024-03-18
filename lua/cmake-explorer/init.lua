@@ -75,11 +75,14 @@ function M.setup(opts)
 	capabilities.setup()
 
 	M.project = Project:new(vim.loop.cwd())
+
 	if not M.project then
 		print("cmake-explorer: no CMakeLists.txt file found. Aborting setup")
 		return
 	end
 	M.project:scan_build_dirs()
 end
+
+M.config = M.setup
 
 return M
