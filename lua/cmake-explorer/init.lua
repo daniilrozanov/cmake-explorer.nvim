@@ -4,10 +4,11 @@ local Project = require("cmake-explorer.project")
 local capabilities = require("cmake-explorer.capabilities")
 local utils = require("cmake-explorer.utils")
 local Path = require("plenary.path")
+-- local pickers = require("cmake-explorer.pickers")
 
 local M = {}
 
-local project = nil
+M.project = nil
 
 local format_build_dir = function()
 	if Path:new(config.build_dir):is_absolute() then
@@ -16,19 +17,13 @@ local format_build_dir = function()
 		end
 	else
 		return function(v)
-			return Path:new(v.path):make_relative(project.path)
+			return Path:new(v.path):make_relative(M.project.path)
 		end
 	end
 end
 
-function M.list_build_dirs()
-	if project then
-		vim.print(project:list_build_dirs())
-	end
-end
-
 function M.configure()
-	assert(project)
+	assert(M.project)
 	local generators = capabilities.generators()
 	table.insert(generators, 1, "Default")
 	vim.ui.select(generators, { prompt = "Select generator" }, function(generator)
@@ -45,7 +40,7 @@ function M.configure()
 				if not build_type then
 					return
 				end
-				local task = project:configure({ generator = generator, build_type = build_type, args = args })
+				local task = M.project:configure({ generator = generator, build_type = build_type, args = args })
 				runner.start(task)
 			end)
 		end)
@@ -53,60 +48,38 @@ function M.configure()
 end
 
 function M.configure_dir()
-	assert(project)
+	assert(M.project)
 
 	vim.ui.select(
-		project:list_build_dirs(),
+		M.project:list_build_dirs(),
 		{ prompt = "Select directory to build", format_item = format_build_dir() },
 		function(dir)
 			if not dir then
 				return
 			end
-			local task = project:configure(dir.path)
+			local task = M.project:configure(dir.path)
 			runner.start(task)
 		end
 	)
 end
 
 function M.configure_last()
-	local task = project:configure_last()
+	local task = M.project:configure_last()
 	runner.start(task)
 end
 
-M.setup = function(cfg)
-	cfg = cfg or {}
+function M.setup(opts)
+	opts = opts or {}
 
-	config.setup(cfg)
+	config.setup(opts)
 	capabilities.setup()
 
-	project = Project:new(vim.loop.cwd())
-	if not project then
+	M.project = Project:new(vim.loop.cwd())
+	if not M.project then
 		print("cmake-explorer: no CMakeLists.txt file found. Aborting setup")
 		return
 	end
-	project:scan_build_dirs()
-
-	local cmd = vim.api.nvim_create_user_command
-
-	cmd("CMakeConfigure", M.configure, { -- opts
-		nargs = 0,
-		bang = true,
-		desc = "CMake configure with parameters",
-	})
-
-	cmd(
-		"CMakeConfigureLast",
-		M.configure_last,
-		{ nargs = 0, bang = true, desc = "CMake configure last if exists. Otherwise default" }
-	)
-
-	cmd(
-		"CMakeConfigureDir",
-		M.configure_dir,
-		{ nargs = 0, bang = true, desc = "CMake configure last if exists. Otherwise default" }
-	)
-
-	cmd("CMakeListBuilds", M.list_build_dirs, { nargs = 0 })
+	M.project:scan_build_dirs()
 end
 
 return M
