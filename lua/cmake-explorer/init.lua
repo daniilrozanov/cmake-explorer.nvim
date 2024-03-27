@@ -4,7 +4,7 @@ local Project = require("cmake-explorer.project")
 local capabilities = require("cmake-explorer.capabilities")
 local utils = require("cmake-explorer.utils")
 local Path = require("plenary.path")
--- local pickers = require("cmake-explorer.pickers")
+local pickers = require("cmake-explorer.pickers")
 
 local M = {}
 
@@ -50,17 +50,18 @@ end
 function M.configure_dir()
 	assert(M.project)
 
-	vim.ui.select(
-		M.project:list_build_dirs(),
-		{ prompt = "Select directory to build", format_item = format_build_dir() },
-		function(dir)
-			if not dir then
-				return
-			end
-			local task = M.project:configure(dir.path)
-			runner.start(task)
-		end
-	)
+	-- vim.ui.select(
+	-- 	M.project:list_build_dirs(),
+	-- 	{ prompt = "Select directory to build", format_item = format_build_dir() },
+	-- 	function(dir)
+	-- 		if not dir then
+	-- 			return
+	-- 		end
+	-- 		local task = M.project:configure(dir.path)
+	-- 		runner.start(task)
+	-- 	end
+	-- )
+	pickers.build_dirs()
 end
 
 function M.configure_last()
@@ -77,12 +78,9 @@ function M.setup(opts)
 	M.project = Project:new(vim.loop.cwd())
 
 	if not M.project then
-		print("cmake-explorer: no CMakeLists.txt file found. Aborting setup")
 		return
 	end
 	M.project:scan_build_dirs()
 end
-
-M.config = M.setup
 
 return M

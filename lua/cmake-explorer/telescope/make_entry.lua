@@ -14,7 +14,7 @@ M.gen_from_fileapi = function(opts)
 
   local make_display = function(entry)
     return displayer({
-      -- { entry.value, "TelescopeResultsIdentifier" },
+      { entry.value.path, "TelescopeResultsIdentifier" },
       entry.ordinal,
     })
   end

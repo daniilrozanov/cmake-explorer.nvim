@@ -2,6 +2,7 @@ local capabilities = require("cmake-explorer.capabilities")
 local Path = require("plenary.path")
 local Scandir = require("plenary.scandir")
 local notif = require("cmake-explorer.notification")
+local utils = require("cmake-explorer.utils")
 
 local query_path_suffix = { ".cmake", "api", "v1", "query", "client-cmake-explorer", "query.json" }
 local reply_dir_suffix = { ".cmake", "api", "v1", "reply" }
@@ -20,13 +21,12 @@ function FileApi:new(opts)
 		path = opts
 	end
 	local obj = {
-		path = Path:new(path):absolute(),
+		path = path,
 		index = nil,
 		cmakefiles = nil,
 		codemodel = nil,
 		targets = {},
 	}
-	Path:new(path):mkdir({ parents = true })
 	setmetatable(obj, FileApi)
 	return obj
 end

@@ -1,17 +1,33 @@
 local cmd = vim.api.nvim_create_user_command
 
-cmd("CMakeConfigure", function()
+cmd("CMakeSelectBehaviour", function()
+	require("cmake-explorer").change_current_behaviour()
+end, { desc = "Configure one of existings directories" })
+
+cmd("CMakeSelectConfig", function()
+	require("cmake-explorer").change_current_config()
+end, { desc = "Configure with parameters" })
+
+cmd("CMakeGenerate", function()
 	require("cmake-explorer").configure()
-end, {
-	nargs = 0,
-	bang = true,
-	desc = "Configure with parameters",
-})
+end, { desc = "Configure with parameters" })
 
-cmd("CMakeConfigureLast", function()
+cmd("CMakeGenerateLast", function()
 	require("cmake-explorer").configure_last()
-end, { nargs = 0, bang = true, desc = "Configure last if exists. Otherwise default" })
+end, { desc = "Configure last if exists. Otherwise default" })
 
-cmd("CMakeConfigureDir", function()
-	require("cmake-explorer").configure_dir()
-end, { nargs = 0, bang = true, desc = "Configure one of existings directories" })
+cmd("CMakeBuild", function()
+	require("cmake-explorer").build()
+end, { desc = "Configure one of existings directories" })
+
+cmd("CMakeBuildLast", function()
+	require("cmake-explorer").build_last()
+end, { desc = "Configure one of existings directories" })
+
+cmd("CMakeConfigureProject", function()
+	require("cmake-explorer").configure_project()
+end, { desc = "Configure one of existings directories" })
+
+cmd("CMakeInitProject", function()
+	require("cmake-explorer").init_project()
+end, { desc = "Configure one of existings directories" })

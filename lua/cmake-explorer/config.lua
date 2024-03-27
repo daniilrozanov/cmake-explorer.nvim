@@ -1,9 +1,16 @@
 local default_config = {
-	cmake_cmd = "cmake",
-	build_dir_template = { "build", "${buildType}", sep = "-", case = nil },
-	build_dir = "",
-	build_types = { "Debug", "Release" },
-	options = {},
+	cmake_path = "cmake",
+	environment = {},
+	configure_environment = {},
+	build_directory = "${workspaceFolder}/build-${buildType}",
+	build_environment = {},
+	build_args = {},
+	build_tool_args = {},
+	generator = nil,
+	default_variants = {},
+	parallel_jobs = nil,
+	save_before_build = true,
+	source_directory = "${workspaceFolder}",
 }
 
 local M = vim.deepcopy(default_config)
