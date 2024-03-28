@@ -8,11 +8,11 @@ cmd("CMakeSelectConfig", function()
 	require("cmake-explorer").change_current_config()
 end, { desc = "Configure with parameters" })
 
-cmd("CMakeGenerate", function()
+cmd("CMakeConfigure", function()
 	require("cmake-explorer").configure()
 end, { desc = "Configure with parameters" })
 
-cmd("CMakeGenerateLast", function()
+cmd("CMakeConfigureLast", function()
 	require("cmake-explorer").configure_last()
 end, { desc = "Configure last if exists. Otherwise default" })
 

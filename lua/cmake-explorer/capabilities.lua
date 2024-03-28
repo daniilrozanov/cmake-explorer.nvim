@@ -39,7 +39,7 @@ function Capabilities.has_fileapi()
 end
 
 Capabilities.setup = function()
-	local output = vim.fn.system({ config.cmake_cmd, "-E", "capabilities" })
+	local output = vim.fn.system({ config.cmake_path, "-E", "capabilities" })
 	Capabilities.json = vim.json.decode(output)
 end
 

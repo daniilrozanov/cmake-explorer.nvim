@@ -4,7 +4,7 @@ local Project = require("cmake-explorer.project")
 local capabilities = require("cmake-explorer.capabilities")
 local utils = require("cmake-explorer.utils")
 local Path = require("plenary.path")
-local pickers = require("cmake-explorer.pickers")
+local pickers = require("cmake-explorer.telescope.pickers")
 
 local M = {}
 
@@ -22,52 +22,13 @@ local format_build_dir = function()
 	end
 end
 
-function M.configure()
+function M.configure(opts)
 	assert(M.project)
-	local generators = capabilities.generators()
-	table.insert(generators, 1, "Default")
-	vim.ui.select(generators, { prompt = "Select generator" }, function(generator)
-		if not generator then
-			return
-		end
-		-- TODO: handle default generator from env (or from anywhere else)
-		generator = utils.is_neq(generator, "Default")
-		vim.ui.select(config.build_types, { prompt = "Select build type" }, function(build_type)
-			if not build_type then
-				return
-			end
-			vim.ui.input({ prompt = "Input additional args" }, function(args)
-				if not build_type then
-					return
-				end
-				local task = M.project:configure({ generator = generator, build_type = build_type, args = args })
-				runner.start(task)
-			end)
-		end)
-	end)
+	opts = opts or {}
+	pickers.configure(opts)
 end
 
-function M.configure_dir()
-	assert(M.project)
-
-	-- vim.ui.select(
-	-- 	M.project:list_build_dirs(),
-	-- 	{ prompt = "Select directory to build", format_item = format_build_dir() },
-	-- 	function(dir)
-	-- 		if not dir then
-	-- 			return
-	-- 		end
-	-- 		local task = M.project:configure(dir.path)
-	-- 		runner.start(task)
-	-- 	end
-	-- )
-	pickers.build_dirs()
-end
-
-function M.configure_last()
-	local task = M.project:configure_last()
-	runner.start(task)
-end
+function M.configure_last(opts) end
 
 function M.setup(opts)
 	opts = opts or {}
@@ -75,12 +36,12 @@ function M.setup(opts)
 	config.setup(opts)
 	capabilities.setup()
 
-	M.project = Project:new(vim.loop.cwd())
+	M.project = Project:from_variants(config.default_variants)
 
 	if not M.project then
+		print("fuuuuuuuuuuuu")
 		return
 	end
-	M.project:scan_build_dirs()
 end
 
 return M

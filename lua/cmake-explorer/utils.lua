@@ -21,6 +21,21 @@ utils.substitude = function(str, subs)
 	return ret
 end
 
+function utils.symlink_compile_commands(src_path, dst_path)
+	local src = Path:new(src_path, "compile_commands.json")
+	if src:exists() then
+		vim.cmd(
+			'silent exec "!'
+			.. config.cmake_path
+			.. " -E create_symlink "
+			.. src:normalize()
+			.. " "
+			.. Path:new(dst_path, "compile_commands.json"):normalize()
+			.. '"'
+		)
+	end
+end
+
 utils.is_eq = function(val, cmp, if_eq, if_not_eq)
 	if val == cmp then
 		if if_eq then

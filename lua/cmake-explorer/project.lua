@@ -2,11 +2,10 @@ local config = require("cmake-explorer.config")
 local Path = require("plenary.path")
 local utils = require("cmake-explorer.utils")
 local FileApi = require("cmake-explorer.file_api")
-local Project = {}
 
-local VariantConfig = {
-  __index = function() end,
-}
+local VariantConfig = {}
+
+VariantConfig.__index = VariantConfig
 
 local variant_subs = {
   ["${workspaceFolder}"] = vim.loop.cwd(),
@@ -14,13 +13,20 @@ local variant_subs = {
 }
 
 function VariantConfig:new(obj)
-  setmetatable(obj, self)
-  obj.subs = obj:subs()
+  setmetatable(obj, VariantConfig)
+  obj.subs = obj:_subs()
   obj.build_directory = obj:_build_directory()
   obj.configure_args = obj:_configure_args()
   obj.configure_command = obj:_configure_command()
   obj.build_args = obj:_build_args()
   obj.build_command = obj:_build_command()
+  if not obj.fileapis[obj.build_directory] then
+    local fa = FileApi:new(obj.build_directory)
+    if fa and fa:exists() then
+      fa:read_reply()
+      obj.fileapis[obj.build_directory] = fa
+    end
+  end
 
   return obj
 end
@@ -41,9 +47,9 @@ function VariantConfig:_configure_args()
   if self.buildType then
     table.insert(args, "-DCMAKE_BUILD_TYPE=" .. self.buildType)
   end
-  if string.lower(self.linkage) == "static" then
+  if self.linkage and string.lower(self.linkage) == "static" then
     table.insert(args, "-DCMAKE_BUILD_SHARED_LIBS=OFF")
-  elseif string.lower(self.linkage) == "shared" then
+  elseif self.linkage and string.lower(self.linkage) == "shared" then
     table.insert(args, "-DCMAKE_BUILD_SHARED_LIBS=ON")
   end
   for k, v in pairs(self.settings or {}) do
@@ -52,7 +58,7 @@ function VariantConfig:_configure_args()
   table.insert(args, "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON")
   table.insert(
     args,
-    "-B" .. Path:new(self:build_directory()):make_relative(utils.substitude(config.source_directory, self.subs))
+    "-B" .. Path:new(self.build_directory):make_relative(utils.substitude(config.source_directory, self.subs))
   )
   return args
 end
@@ -63,6 +69,21 @@ function VariantConfig:_configure_command()
   ret.args = self.configure_args
   ret.cwd = variant_subs["${workspaceFolder}"]
   ret.env = vim.tbl_deep_extend("keep", self.env, config.configure_environment, config.environment)
+  ret.after_success = function()
+    utils.symlink_compile_commands(self.build_directory, variant_subs["${workspaceFolder}"])
+    self.fileapis[self.build_directory]:read_reply()
+  end
+  ret.before_run = function()
+    local fa = FileApi:new(self.build_directory)
+    if not fa then
+      return
+    end
+    if not fa:create() then
+      return
+    end
+    self.fileapis[self.build_directory] = fa
+    return true
+  end
   return ret
 end
 
@@ -72,23 +93,38 @@ function VariantConfig:_build_args()
     args,
     Path:new(self.build_directory):make_relative(utils.substitude(config.source_directory, self.subs))
   )
-  table.insert(args, self.buildArgs or config.build_args)
-  if self.buildToolArgs or config.build_tool_args then
-    table.insert(args, "--")
-    table.insert(args, self.buildToolArgs or config.build_tool_args)
+  if #self.buildArgs ~= 0 then
+    for _, v in ipairs(self.buildArgs) do
+      table.insert(args, v)
+    end
+  elseif #config.build_args ~= 0 then
+    for _, v in ipairs(config.build_args) do
+      table.insert(args, v)
+    end
   end
+  if #self.buildToolArgs ~= 0 or #config.build_tool_args ~= 0 then
+    table.insert(args, "--")
+    if #self.buildToolArgs ~= 0 then
+      for _, v in ipairs(self.buildToolArgs) do
+        table.insert(args, v)
+      end
+    elseif #config.build_tool_args ~= 0 then
+      for _, v in ipairs(config.build_tool_args) do
+        table.insert(args, v)
+      end
+    end
+  end
+  return args
 end
 
 function VariantConfig:_build_command()
   local ret = {}
   ret.cmd = config.cmake_path
-  ret.args = self.configure_args
+  ret.args = self.build_args
   ret.cwd = variant_subs["${workspaceFolder}"]
   ret.env = vim.tbl_deep_extend("keep", self.env, config.configure_environment, config.environment)
   return ret
 end
-
-function Project.__index() end
 
 local function cartesian_product(sets)
   local function collapse_result(res)
@@ -151,6 +187,10 @@ local function cartesian_product(sets)
   end)
 end
 
+local Project = {}
+
+Project.__index = Project
+
 function Project:from_variants(variants)
   local obj = { headers = {}, configs = {}, current_config = nil, fileapis = {} }
   local ivariants = {}
@@ -158,18 +198,23 @@ function Project:from_variants(variants)
     table.insert(obj.headers, v.description or "")
     table.insert(ivariants, v)
   end
-
-  for _, v in cartesian_product(ivariants) do
+  for v in cartesian_product(ivariants) do
+    v.fileapis = obj.fileapis
     v = VariantConfig:new(v)
     table.insert(obj.configs, v)
     if v.default then
-      obj.current_config = #obj.configs
+      obj.current_config = v
     end
     if not obj.fileapis[v.build_directory] then
-      obj.fileapis[v.build_directory] = FileApi:new(v.build_directory)
+      local fa = FileApi:new(v.build_directory)
+      if fa and fa:exists() then
+        fa:read_reply()
+        obj.fileapis[v.build_directory] = fa
+      end
     end
   end
-  return setmetatable(obj, self)
+  setmetatable(obj, Project)
+  return obj
 end
 
 function Project:from_presets(presets)
@@ -177,18 +222,40 @@ function Project:from_presets(presets)
   return setmetatable(obj, self)
 end
 
-function Project:set_current_config() end
+function Project:set_current_config(idx)
+  self.current_config = self.configs[idx]
+end
 
 function Project:set_current_build() end
 
-function Project:conf_args() end
+function Project:configure_command()
+  return self.current_config.configure_command
+end
 
-function Project:build_args() end
+function Project:build_command()
+  if not self.current_config then
+    return
+  end
+  if getmetatable(self.current_config) == VariantConfig then
+    return self.current_config.build_command
+  end
+end
 
-function Project:build_dir() end
+function Project:build_directory()
+  if not self.current_config then
+    return
+  end
+  return self.current_config.build_directory
+end
 
-function Project:list_configs() end
+function Project:list_configs()
+  return self.configs
+end
 
-function Project:list_builds() end
+function Project:list_builds(opts)
+  if getmetatable(self.current_config) == VariantConfig then
+    return { self.current_config }
+  end
+end
 
 return Project

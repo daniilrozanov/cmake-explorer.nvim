@@ -7,7 +7,26 @@ local default_config = {
 	build_args = {},
 	build_tool_args = {},
 	generator = nil,
-	default_variants = {},
+	default_variants = {
+		profiles = {
+			default = "debug",
+			choices = {
+				debug = { short = "Debug", long = "Long debug", buildType = "Debug" },
+				release = { short = "Release", long = "Long release", buildType = "Release" },
+			},
+		},
+		linkage = {
+			default = "shared",
+			choices = {
+				static = { short = "Static", long = "Long static", linkage = "static" },
+				shared = { short = "Shared", long = "Long shared", linkage = "shared" },
+			},
+		},
+	},
+	variants_display = {
+		short_sep = " × ",
+		long_sep = " ❄ ",
+	},
 	parallel_jobs = nil,
 	save_before_build = true,
 	source_directory = "${workspaceFolder}",
